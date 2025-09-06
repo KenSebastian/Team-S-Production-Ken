@@ -14,7 +14,7 @@ COPY .yarn .yarn
 # Base level installer for packages and files
 FROM base AS installer
 WORKDIR /$WORKDIR
-COPY .
+COPY . /$WORKDIR
 
 # Production basics (ports, env, etc)
 FROM base AS prod-base
