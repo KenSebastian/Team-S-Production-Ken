@@ -1,0 +1,49 @@
+# Stage to copy filesystem and install node packages
+FROM node:18.12.0-alpine AS base
+ENV WORKDIR=app
+ARG BACKEND_PORT
+ARG POSTGRES_USER
+ARG POSTGRES_PASSWORD
+ARG POSTGRES_DB
+ARG POSTGRES_CONTAINER
+ARG POSTGRES_PORT
+WORKDIR /$WORKDIR
+COPY [".pnp.cjs", ".pnp.loader.mjs", ".yarnrc.yml", "./"]
+COPY .yarn .yarn
+
+# Base level installer for packages and files
+FROM base AS installer
+WORKDIR /$WORKDIR
+COPY .
+
+# Production basics (ports, env, etc)
+FROM base AS prod-base
+WORKDIR /$WORKDIR
+ARG PRODUCTION_PORT
+ENV FRONTEND_PORT=$PRODUCTION_PORT
+ENV BACKEND_PORT=$PRODUCTION_PORT
+ENV NODE_ENV=production
+EXPOSE $PRODUCTION_PORT
+
+# Production backend builder. Creates a maximally trimmed out image
+FROM installer AS prod-backend-builder
+WORKDIR /$WORKDIR
+RUN rm -r apps/backend/tests
+RUN yarn install --immutable --immutable-cache --check-cache
+RUN yarn turbo prune --scope=backend --docker
+
+# Stage to run prod backend (THIS IS NOW THE FINAL STAGE)
+FROM prod-base AS prod-backend
+WORKDIR /$WORKDIR
+ENV POSTGRES_USER=$POSTGRES_USER
+ENV POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+ENV POSTGRES_DB=$POSTGRES_DB
+ENV POSTGRES_CONTAINER=$POSTGRES_CONTAINER
+ENV POSTGRES_PORT=$POSTGRES_PORT
+ENV POSTGRES_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_CONTAINER}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public"
+COPY --from=prod-backend-builder ["/$WORKDIR/out/json", "/$WORKDIR/out/yarn.lock", "/$WORKDIR/out/full", "./"]
+RUN yarn install --immutable
+RUN yarn turbo run build
+RUN yarn workspaces focus --all --production
+ENTRYPOINT yarn workspace database run migrate:deploy && yarn workspace backend run deploy
+HEALTHCHECK CMD wget --spider localhost:$PORT/healthcheck || bash -c 'kill -s 15 -1 && (sleep 10; kill -s 9 -1)'
