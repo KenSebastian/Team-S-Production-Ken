@@ -29,7 +29,7 @@ EXPOSE $PRODUCTION_PORT
 FROM installer AS prod-backend-builder
 WORKDIR /$WORKDIR
 RUN rm -r apps/backend/tests
-RUN yarn install --immutable --immutable-cache --check-cache
+RUN yarn install --immutable
 RUN yarn turbo prune --scope=backend --docker
 
 # Stage to run prod backend (THIS IS NOW THE FINAL STAGE)
