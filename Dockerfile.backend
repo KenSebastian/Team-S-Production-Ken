@@ -40,7 +40,7 @@ ENV POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 ENV POSTGRES_DB=$POSTGRES_DB
 ENV POSTGRES_CONTAINER=$POSTGRES_CONTAINER
 ENV POSTGRES_PORT=$POSTGRES_PORT
-ENV POSTGRES_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_CONTAINER}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public"
+ENV POSTGRES_URL="postgresql://ken:0otPUEOz1RYFwUr4FHvkaZNXymkIDs9F@dpg-d2u548p5pdvs73a52f70-a/hospital_b8tx?schema=public"
 COPY --from=prod-backend-builder ["/$WORKDIR/out/json", "/$WORKDIR/out/yarn.lock", "/$WORKDIR/out/full", "./"]
 RUN yarn install --immutable
 RUN yarn turbo run build
